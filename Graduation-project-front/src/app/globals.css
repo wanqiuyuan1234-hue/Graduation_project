@@ -1,0 +1,567 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  /* FastGPT brand tokens */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-foreground: var(--brand-soft-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* FastGPT-inspired design tokens */
+  --radius: 0.875rem; /* 14px base, cards use 12-16px */
+  --background: oklch(0.98 0.002 250); /* 浅灰底 light gray */
+  --foreground: oklch(0.18 0.01 250);
+  --card: oklch(1 0 0); /* 白卡 white card */
+  --card-foreground: oklch(0.18 0.01 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.01 250);
+  /* Brand blue #3370FF */
+  --primary: oklch(0.546 0.215 264);
+  --primary-foreground: oklch(0.99 0 0);
+  --brand: oklch(0.546 0.215 264); /* #3370FF */
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-soft: oklch(0.955 0.022 264); /* 浅蓝底 */
+  --brand-soft-foreground: oklch(0.48 0.19 264);
+  --secondary: oklch(0.965 0.003 250);
+  --secondary-foreground: oklch(0.3 0.01 250);
+  --muted: oklch(0.965 0.003 250);
+  --muted-foreground: oklch(0.5 0.012 250);
+  --accent: oklch(0.955 0.022 264);
+  --accent-foreground: oklch(0.48 0.19 264);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.918 0.004 250);
+  --input: oklch(0.93 0.004 250);
+  --ring: oklch(0.546 0.215 264);
+  --chart-1: oklch(0.546 0.215 264); /* brand */
+  --chart-2: oklch(0.7 0.15 162);
+  --chart-3: oklch(0.75 0.16 70);
+  --chart-4: oklch(0.6 0.18 340);
+  --chart-5: oklch(0.55 0.13 200);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.25 0.01 250);
+  --sidebar-primary: oklch(0.546 0.215 264);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.955 0.022 264);
+  --sidebar-accent-foreground: oklch(0.48 0.19 264);
+  --sidebar-border: oklch(0.918 0.004 250);
+  --sidebar-ring: oklch(0.546 0.215 264);
+  /* Status colors */
+  --success: oklch(0.62 0.16 152);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.75 0.16 70);
+  --warning-foreground: oklch(0.26 0.05 70);
+}
+
+.dark {
+  --background: oklch(0.16 0.008 250);
+  --foreground: oklch(0.97 0.003 250);
+  --card: oklch(0.215 0.01 250);
+  --card-foreground: oklch(0.97 0.003 250);
+  --popover: oklch(0.215 0.01 250);
+  --popover-foreground: oklch(0.97 0.003 250);
+  --primary: oklch(0.62 0.2 264);
+  --primary-foreground: oklch(0.14 0.01 250);
+  --brand: oklch(0.62 0.2 264);
+  --brand-foreground: oklch(0.14 0.01 250);
+  --brand-soft: oklch(0.28 0.05 264);
+  --brand-soft-foreground: oklch(0.78 0.14 264);
+  --secondary: oklch(0.27 0.01 250);
+  --secondary-foreground: oklch(0.97 0.003 250);
+  --muted: oklch(0.27 0.01 250);
+  --muted-foreground: oklch(0.68 0.01 250);
+  --accent: oklch(0.28 0.05 264);
+  --accent-foreground: oklch(0.78 0.14 264);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.62 0.2 264);
+  --chart-1: oklch(0.62 0.2 264);
+  --chart-2: oklch(0.7 0.15 162);
+  --chart-3: oklch(0.75 0.16 70);
+  --chart-4: oklch(0.6 0.18 340);
+  --chart-5: oklch(0.55 0.13 200);
+  --sidebar: oklch(0.215 0.01 250);
+  --sidebar-foreground: oklch(0.97 0.003 250);
+  --sidebar-primary: oklch(0.62 0.2 264);
+  --sidebar-primary-foreground: oklch(0.14 0.01 250);
+  --sidebar-accent: oklch(0.28 0.05 264);
+  --sidebar-accent-foreground: oklch(0.78 0.14 264);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.62 0.2 264);
+  --success: oklch(0.62 0.16 152);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.75 0.16 70);
+  --warning-foreground: oklch(0.26 0.05 70);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+/* FastGPT-style soft shadow utility */
+@utility shadow-card {
+  box-shadow:
+    0 1px 2px 0 oklch(0.18 0.01 250 / 0.04),
+    0 4px 12px -2px oklch(0.18 0.01 250 / 0.06);
+}
+
+@utility shadow-card-hover {
+  box-shadow:
+    0 2px 4px 0 oklch(0.18 0.01 250 / 0.05),
+    0 12px 28px -6px oklch(0.546 0.215 264 / 0.12);
+}
+
+/* Custom thin scrollbar for code & lists */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.85 0.004 250) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: oklch(0.85 0.004 250);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.546 0.215 264 / 0.5);
+}
+.dark .scrollbar-thin {
+  scrollbar-color: oklch(0.4 0.01 250) transparent;
+}
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: oklch(0.4 0.01 250);
+}
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.62 0.2 264 / 0.6);
+}
+
+/* Reusable fade-in utility (opacity 0→1, translateY 6px→0, 0.2s) */
+.animate-fade-in {
+  animation: animate-fade-in 0.2s ease-out both;
+}
+@keyframes animate-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse-dot — subtle scale + opacity breath for small accent dots
+   (e.g. highlight bullets on module-card hover). 1.6s ease-in-out loop. */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* Reusable card hover lift — composes a 200ms transform + shadow transition
+   with the brand-tinted shadow-card-hover. Apply on any clickable card to
+   get the standard "lift on hover" affordance without re-typing the trio. */
+.card-hover-lift {
+  transition:
+    transform 0.2s ease-out,
+    box-shadow 0.2s ease-out;
+}
+.card-hover-lift:hover {
+  transform: translateY(-0.25rem);
+  box-shadow:
+    0 2px 4px 0 oklch(0.18 0.01 250 / 0.05),
+    0 12px 28px -6px oklch(0.546 0.215 264 / 0.12);
+}
+
+/* Shimmer for skeletons (optional) */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--muted);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(1 0 0 / 0.45),
+    transparent
+  );
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Skeleton shimmer overlay — subtler than .shimmer, composes with the
+   shadcn Skeleton's animate-pulse. Apply on top of a Skeleton by adding
+   the class alongside (e.g. <Skeleton className="skeleton-shimmer" />). */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(1 0 0 / 0.18),
+    transparent
+  );
+  animation: skeleton-shimmer 1.4s infinite;
+}
+.dark .skeleton-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(1 0 0 / 0.08),
+    transparent
+  );
+}
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Brand-tinted text selection */
+::selection {
+  background: var(--brand-soft);
+  color: var(--brand-soft-foreground);
+}
+
+/* Global keyboard focus ring for accessibility */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Citation badge inline style */
+.citation-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  margin: 0 0.1rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 0.375rem;
+  background: var(--brand-soft);
+  color: var(--brand-soft-foreground);
+  border: 1px solid oklch(0.546 0.215 264 / 0.25);
+  cursor: pointer;
+  vertical-align: super;
+  transition: all 0.15s ease;
+}
+.citation-badge:hover {
+  background: var(--brand);
+  color: var(--brand-foreground);
+  transform: translateY(-1px);
+}
+
+/* Breadcrumb separator — muted slash with slight horizontal spacing.
+   Used between path segments in the KB file-tree breadcrumb. */
+.breadcrumb-sep {
+  color: var(--muted-foreground);
+  margin: 0 0.3rem;
+  opacity: 0.55;
+  user-select: none;
+}
+
+/* Markdown body styling for chat answers */
+.prose-chat {
+  line-height: 1.7;
+  font-size: 0.925rem;
+}
+.prose-chat p {
+  margin: 0.5rem 0;
+}
+.prose-chat h1, .prose-chat h2, .prose-chat h3 {
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  line-height: 1.3;
+}
+.prose-chat h1 { font-size: 1.25rem; }
+.prose-chat h2 { font-size: 1.125rem; }
+.prose-chat h3 { font-size: 1rem; }
+.prose-chat ul, .prose-chat ol {
+  margin: 0.5rem 0;
+  padding-left: 1.4rem;
+}
+.prose-chat ul { list-style: disc; }
+.prose-chat ol { list-style: decimal; }
+.prose-chat li { margin: 0.25rem 0; }
+.prose-chat code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.825rem;
+  background: var(--muted);
+  padding: 0.12rem 0.35rem;
+  border-radius: 0.3rem;
+  transition: background 0.15s ease;
+}
+.prose-chat :not(pre) > code:hover {
+  background: var(--brand-soft);
+  color: var(--brand-soft-foreground);
+}
+.prose-chat pre {
+  background: oklch(0.22 0.008 250);
+  color: oklch(0.92 0.003 250);
+  padding: 0.85rem 1rem;
+  border-radius: 0.625rem;
+  overflow-x: auto;
+  margin: 0.6rem 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  /* Inherit the thin scrollbar treatment, but slightly thinner and
+     brand-tinted on hover so the pre block's horizontal scroller reads
+     as part of the brand surface, not the default muted one. */
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.5 0.005 250 / 0.45) transparent;
+}
+.prose-chat pre::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.prose-chat pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+.prose-chat pre::-webkit-scrollbar-thumb {
+  background-color: oklch(0.5 0.005 250 / 0.4);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.15s ease;
+}
+.prose-chat pre::-webkit-scrollbar-thumb:hover {
+  background-color: var(--brand);
+}
+.dark .prose-chat pre {
+  scrollbar-color: oklch(0.6 0.01 250 / 0.4) transparent;
+  /* Dark mode: lift the pre block slightly off the card surface with a
+     subtle lighter border so it reads as a distinct surface against the
+     dark card background (oklch 0.215 vs pre's 0.22). */
+  border: 1px solid oklch(1 0 0 / 0.08);
+}
+.dark .prose-chat pre::-webkit-scrollbar-thumb {
+  background-color: oklch(0.6 0.01 250 / 0.35);
+}
+.dark .prose-chat pre::-webkit-scrollbar-thumb:hover {
+  background-color: var(--brand);
+}
+.prose-chat pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+.prose-chat blockquote {
+  border-left: 3px solid var(--brand);
+  padding-left: 0.85rem;
+  color: var(--muted-foreground);
+  margin: 0.6rem 0;
+}
+.prose-chat a {
+  color: var(--brand);
+  text-decoration: none;
+}
+.prose-chat a:hover { text-decoration: underline; }
+.prose-chat table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.6rem 0;
+  font-size: 0.825rem;
+}
+.prose-chat th, .prose-chat td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.prose-chat th {
+  background: var(--muted);
+  font-weight: 600;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Code viewer refinements — language chip, complexity ring, line hl
+   ────────────────────────────────────────────────────────────────── */
+
+/* Language chip — small pill wrapping the file-type icon + language
+   label in the CodeViewer toolbar. The base utility handles layout,
+   radius, padding and monospace size; the per-language tint is added
+   by composing LANGUAGE_META.badge classes (bg-blue-50 text-blue-700
+   border-blue-200, etc.) on top of this utility. */
+.code-lang-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 0.375rem;
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.0625rem 0.375rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Complexity ring — 28px SVG progress ring used in module-card.
+   Smoothly transitions the arc as the complexity value changes. */
+.complexity-ring {
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+/* Code line highlight — replaces the previous static `border-l-2
+   border-l-brand` approach with a pseudo-element marker that fades
+   in subtly when a highlighted line mounts. Active range → full
+   brand bar; inactive range → muted brand bar (60% opacity). */
+.code-line-highlight {
+  position: relative;
+}
+.code-line-highlight::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--brand);
+  opacity: 0;
+  z-index: 5;
+  pointer-events: none;
+  animation: code-line-highlight-in 0.2s ease-out forwards;
+}
+.code-line-highlight--muted::before {
+  background: oklch(0.546 0.215 264 / 0.6);
+}
+@keyframes code-line-highlight-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Chat message refinements — timestamp label, user bubble hover,
+   assistant card color transition
+   ────────────────────────────────────────────────────────────────── */
+
+/* Tiny muted tabular-nums timestamp label. Used inline below the user
+   bubble content and inside the assistant card header row. Compose with
+   `opacity-60 group-hover:opacity-100` (user bubble) or just place as-is
+   (assistant card — always visible muted). 10px keeps it subordinate to
+   the message body without crowding the layout. */
+.msg-timestamp {
+  font-size: 0.625rem; /* 10px */
+  color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.15s ease;
+  line-height: 1.2;
+}
+
+/* Brand user chat bubble — subtle shadow lift on hover so the bubble
+   reads as an interactive surface when the user hovers to reveal the
+   copy affordance. The base `shadow-card` is applied inline on the
+   bubble; this refines only the hover state. */
+.user-bubble {
+  transition: box-shadow 0.2s ease;
+}
+.user-bubble:hover {
+  box-shadow:
+    0 2px 4px 0 oklch(0.18 0.01 250 / 0.05),
+    0 12px 28px -6px oklch(0.546 0.215 264 / 0.18);
+}
+.dark .user-bubble:hover {
+  box-shadow:
+    0 2px 4px 0 oklch(0 0 0 / 0.25),
+    0 12px 28px -6px oklch(0.62 0.2 264 / 0.28);
+}
+
+/* Assistant chat card — subtle background + border color transition so
+   any future state change (e.g. active/selected, error, streaming) can
+   animate cleanly instead of snapping. No visual change by itself. */
+.assistant-card {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}

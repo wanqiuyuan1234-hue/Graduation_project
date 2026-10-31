@@ -1,0 +1,5 @@
+# 仅追踪毕业设计的前后端两个目录，其余全部忽略
+/*
+!/Graduation-project-back/
+!/Graduation-project-front/
+!/.gitignore
