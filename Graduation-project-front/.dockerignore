@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.idea
+.vscode
+*.md
+*.png
+*.tar
+db
+download
+tool-results
+agent-ctx

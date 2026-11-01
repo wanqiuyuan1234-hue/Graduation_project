@@ -304,10 +304,45 @@
   color: var(--brand-soft-foreground);
 }
 
-/* Global keyboard focus ring for accessibility */
+/* Global keyboard focus ring for accessibility — soft & natural.
+   Uses a thinner semi-transparent brand outline + a subtle outer glow via
+   box-shadow so it reads as a soft halo rather than a hard bright rectangle.
+   Rounded to match the element's border-radius for a cohesive look. */
 :focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  outline: 1.5px solid color-mix(in oklch, var(--ring) 70%, transparent);
+  outline-offset: 1px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 18%, transparent);
+}
+
+/* Remove the double focus ring on elements that already show their own
+   focused state via background/border (e.g. nav pills, toggle buttons) —
+   they don't need an outline on top. */
+button[data-state="active"]:focus-visible,
+[role="tab"][data-state="active"]:focus-visible,
+[aria-pressed="true"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 35%, transparent);
+}
+
+/* Command palette / cmdk: the root container, input, list and items all
+   participate in keyboard nav. The items show a bg highlight for selection,
+   so any focus outline on these is redundant, visually noisy and gets clipped
+   by the dialog's overflow-hidden container (causing the "blocked rectangle"
+   look). Suppress outline + box-shadow on all cmdk surfaces — keyboard
+   accessibility is preserved via the bg highlight on the selected item. */
+[cmdk-root]:focus-visible,
+[cmdk-input]:focus-visible,
+[cmdk-item]:focus-visible,
+[cmdk-list]:focus-visible,
+[data-slot="command"]:focus-visible,
+[data-slot="command-input"]:focus-visible,
+[data-slot="command-item"]:focus-visible,
+[data-slot="command-input-wrapper"]:focus-visible,
+[role="option"]:focus-visible,
+[role="listbox"]:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Citation badge inline style */
