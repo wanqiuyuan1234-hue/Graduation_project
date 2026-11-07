@@ -1,0 +1,16 @@
+{
+  "name": "rag-one",
+  "spec_name": "rag-one",
+  "description": "Code RAG 一期：索引构建管线（clone → AST 层级切分 → embedding → 入库 PG + Chroma），含数据库连接本地/服务器一键切换",
+  "created_at": "2026-11-02T00:00:00+08:00",
+  "updated_at": "2026-11-02T16:56:00+08:00",
+  "phase": "completed",
+  "current_task": null,
+  "auto_mode": false,
+  "phases": {
+    "requirements": { "status": "approved" },
+    "design": { "status": "approved" },
+    "tasks": { "status": "approved" },
+    "execution": { "status": "completed", "completed_at": "2026-11-02T16:56:00+08:00" }
+  }
+}
