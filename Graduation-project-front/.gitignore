@@ -18,6 +18,9 @@ node_modules/
 # next.js
 /.next/
 /out/
+# Next/Turbopack 本地缓存备份目录（如 .next.bak-20261107），构建产物，不入库
+/.next.bak-*/
+/.turbo/
 
 # production
 /build/

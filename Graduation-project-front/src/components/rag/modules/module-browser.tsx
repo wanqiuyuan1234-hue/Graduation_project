@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Boxes, Filter, Layers, Search, SearchX, ArrowDownUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavStore } from "@/lib/rag/store";
-import { MODULES, REPOS, getModulesByRepo } from "@/lib/rag/mock-data";
+import { useModules, useRepos } from "@/lib/api/hooks";
 import type { Language, ModuleType } from "@/lib/rag/types";
 import { LANGUAGE_META, MODULE_TYPE_META } from "@/components/rag/shared/meta";
 import { ModuleGridSkeleton } from "@/components/rag/shared/skeletons";
@@ -82,10 +82,29 @@ export function ModuleBrowserPage() {
 
   const isAllRepos = repoFilter === ALL_REPOS_VALUE;
 
-  const candidateModules = useMemo(
-    () => (isAllRepos ? MODULES : getModulesByRepo(repoFilter)),
-    [isAllRepos, repoFilter],
+  // 仓库列表来自后端；首次加载后若本地 repoFilter 是旧 mock id，回落到第一个真实仓库
+  const { repos } = useRepos();
+  const [knownRepoIds, setKnownRepoIds] = useState("");
+  const repoIdsKey = repos.map((r) => r.id).join(",");
+  if (repoIdsKey && repoIdsKey !== knownRepoIds) {
+    setKnownRepoIds(repoIdsKey);
+    if (
+      repoFilter !== ALL_REPOS_VALUE &&
+      !repos.some((r) => r.id === repoFilter)
+    ) {
+      setRepoFilter(repos[0].id);
+    }
+  }
+
+  const effectiveRepoId =
+    repoFilter !== ALL_REPOS_VALUE && repos.some((r) => r.id === repoFilter)
+      ? repoFilter
+      : repos[0]?.id ?? null;
+
+  const modulesState = useModules(
+    isAllRepos ? null : effectiveRepoId,
   );
+  const candidateModules = modulesState.data;
 
   const languages = useMemo(() => {
     const set = new Set<Language>();
@@ -168,7 +187,7 @@ export function ModuleBrowserPage() {
           </div>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             {isAllRepos
-              ? `跨仓库 · ${MODULES.length} 模块 · ${REPOS.length} 仓库`
+              ? `跨仓库 · ${candidateModules.length} 模块 · ${repos.length} 仓库`
               : `当前仓库共 ${candidateModules.length} 个模块 · ${languages.length} 种语言`}
           </p>
         </div>
@@ -181,7 +200,7 @@ export function ModuleBrowserPage() {
               <Layers className="size-3.5" />
               全部仓库
             </SelectItem>
-            {REPOS.map((r) => (
+            {repos.map((r) => (
               <SelectItem key={r.id} value={r.id}>
                 {r.name}
               </SelectItem>
@@ -242,7 +261,7 @@ export function ModuleBrowserPage() {
 
       {/* Grid (scrollable) */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        {loading ? (
+        {loading || modulesState.loading ? (
           <ModuleGridSkeleton />
         ) : filtered.length === 0 ? (
           <EmptyState onReset={resetFilters} hasFilters={search !== "" || language !== "all" || type !== "all"} />

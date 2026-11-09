@@ -21,17 +21,12 @@ import {
   Trash2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import {
-  REPOS,
-  SLICE_STRATEGIES,
-  getFileTreeByRepo,
-  getRepoById,
-} from "@/lib/rag/mock-data";
+import { SLICE_STRATEGIES } from "@/lib/rag/mock-data";
+import { useFileChunks, useFileTree, useRepos } from "@/lib/api/hooks";
 import type {
   FileTreeNode,
   Repo,
   SliceStrategy,
-  SliceStrategyId,
 } from "@/lib/rag/types";
 import { useNavStore } from "@/lib/rag/store";
 import { StatusBadge } from "@/components/rag/shared/badges";
@@ -68,7 +63,11 @@ import { FileTree, collectDirPaths } from "./file-tree";
 
 type StrategyOption = NonNullable<SliceStrategy["options"]>[number];
 
-const STRATEGY_LABELS: Record<SliceStrategyId, string> = {
+// 后端 strategies 为 ast / fixed，这里给出可直接展示的中文标签
+const STRATEGY_LABELS: Record<string, string> = {
+  ast: "AST 结构切分",
+  fixed: "固定窗口切分",
+  unknown: "未标注策略",
   "ast-semantic": "AST 语义切分",
   "ast-function": "AST 函数级切分",
   "fixed-token": "固定 token 切分",
@@ -82,13 +81,15 @@ export function KnowledgeBasePage() {
   const activeRepoId = useNavStore((s) => s.activeRepoId);
   const openRepo = useNavStore((s) => s.openRepo);
 
+  const { repos, loading: reposLoading, error: reposError } = useRepos();
+
   const stats = useMemo(() => {
-    const repos = REPOS.length;
-    const modules = REPOS.reduce((sum, r) => sum + r.totalModules, 0);
-    const chunks = REPOS.reduce((sum, r) => sum + r.totalChunks, 0);
-    const syncing = REPOS.filter((r) => r.status === "syncing").length;
-    return { repos, modules, chunks, syncing };
-  }, []);
+    const repoCount = repos.length;
+    const modules = repos.reduce((sum, r) => sum + r.totalModules, 0);
+    const chunks = repos.reduce((sum, r) => sum + r.totalChunks, 0);
+    const syncing = repos.filter((r) => r.status === "syncing").length;
+    return { repos: repoCount, modules, chunks, syncing };
+  }, [repos]);
 
   // Brief loading skeleton on mount (300ms) for the stats cards row.
   // setState lives inside the setTimeout callback (async) so it doesn't
@@ -99,7 +100,22 @@ export function KnowledgeBasePage() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  const activeRepo = getRepoById(activeRepoId) ?? REPOS[0];
+  const activeRepo =
+    repos.find((r) => r.id === activeRepoId) ?? repos[0];
+
+  if (!activeRepo) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-6xl flex-col items-center justify-center px-4 py-16 text-center">
+        <Database className="size-8 text-muted-foreground" />
+        <p className="mt-4 text-base font-medium text-foreground">
+          {reposLoading ? "正在加载知识库…" : "暂无已建库的仓库"}
+        </p>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {reposError ?? "请先运行后端建库脚本，或在知识库中拉取仓库"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
@@ -143,7 +159,7 @@ export function KnowledgeBasePage() {
 
       {/* repo list */}
       <div className="mb-6 space-y-3">
-        {REPOS.map((repo) => (
+        {repos.map((repo) => (
           <RepoCard
             key={repo.id}
             repo={repo}
@@ -224,9 +240,12 @@ function RepoCard({
           <div className="mt-1 truncate font-mono text-[12px] text-muted-foreground">
             {repo.url}
           </div>
-          <div className="mt-1.5 text-[13px] text-muted-foreground">
-            {repo.description}
-          </div>
+          {/* D6：后端不提供仓库描述，为空时不渲染该行 */}
+          {repo.description ? (
+            <div className="mt-1.5 text-[13px] text-muted-foreground">
+              {repo.description}
+            </div>
+          ) : null}
         </div>
 
         {/* progress / meta */}
@@ -326,7 +345,7 @@ function PullRepoDialog() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("main");
-  const [strategy, setStrategy] = useState<SliceStrategyId>("ast-semantic");
+  const [strategy, setStrategy] = useState<string>("ast-semantic");
   const [embedding, setEmbedding] = useState("bge-m3");
   const [strategyOptions, setStrategyOptions] = useState<
     Record<string, number | string>
@@ -536,7 +555,8 @@ function FileTreeSection({ repo }: { repo: Repo }) {
   // Track the repo this selection belongs to; reset when repo changes (adjust during render, no effect)
   const [selectedRepoId, setSelectedRepoId] = useState(repo.id);
 
-  const tree = useMemo(() => getFileTreeByRepo(repo.id), [repo.id]);
+  const treeState = useFileTree(repo.id);
+  const tree = treeState.data;
 
   // Expansion is owned by the parent so the collapse-all / expand-all buttons
   // can drive it. Initialize to "all dirs expanded" to preserve the previous
@@ -544,6 +564,13 @@ function FileTreeSection({ repo }: { repo: Repo }) {
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(collectDirPaths(tree)),
   );
+
+  // 文件树是异步到达的：首次拿到数据时补做一次"全部展开"（渲染期同步，避免 setState in effect）
+  const [lastTreeSize, setLastTreeSize] = useState(0);
+  if (tree.length > 0 && tree.length !== lastTreeSize) {
+    setLastTreeSize(tree.length);
+    setExpanded(new Set(collectDirPaths(tree)));
+  }
 
   if (selectedRepoId !== repo.id) {
     setSelectedRepoId(repo.id);
@@ -592,7 +619,11 @@ function FileTreeSection({ repo }: { repo: Repo }) {
           </div>
         </div>
         <p className="mb-3 text-[11px] text-muted-foreground">
-          共 {totalFiles} 文件 · {totalChunks} 切片
+          {treeState.loading
+            ? "正在加载文件树…"
+            : treeState.error
+              ? `文件树加载失败：${treeState.error}`
+              : `共 ${totalFiles} 文件 · ${totalChunks} 切片`}
         </p>
         <div className="relative mb-3">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -671,16 +702,23 @@ function FileTreeSection({ repo }: { repo: Repo }) {
   );
 }
 
-interface SynthChunk {
+interface PreviewChunk {
   label: string;
   startLine: number;
   endLine: number;
   tokens: number;
-  score: number;
 }
 
 function ChunkPreview({ file }: { file: FileTreeNode }) {
-  const chunks = useMemo(() => synthesizeChunks(file), [file]);
+  const chunksState = useFileChunks(file.id ?? null);
+  const chunks: PreviewChunk[] = chunksState.data.map((chunk) => ({
+    label:
+      chunk.name ??
+      (chunk.strategy === "fixed" ? "固定窗口切片" : chunk.chunk_type),
+    startLine: chunk.start_line,
+    endLine: chunk.end_line,
+    tokens: Math.max(1, Math.round(chunk.char_count / 4)),
+  }));
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-[12px]">
@@ -693,9 +731,17 @@ function ChunkPreview({ file }: { file: FileTreeNode }) {
           <span className="text-muted-foreground">{file.language}</span>
         )}
       </div>
+      {chunksState.loading ? (
+        <p className="text-[12px] text-muted-foreground">正在加载切片…</p>
+      ) : chunksState.error ? (
+        <p className="text-[12px] text-muted-foreground">
+          切片加载失败：{chunksState.error}
+        </p>
+      ) : chunks.length === 0 ? (
+        <p className="text-[12px] text-muted-foreground">该文件暂无切片记录</p>
+      ) : null}
       <div className="space-y-2">
         {chunks.map((c, i) => {
-          const pct = Math.round(c.score * 100);
           return (
             <div
               key={i}
@@ -717,18 +763,6 @@ function ChunkPreview({ file }: { file: FileTreeNode }) {
                   <span className="text-muted-foreground">tokens</span>
                   <span className="font-semibold tabular-nums text-foreground">
                     {c.tokens}
-                  </span>
-                </span>
-                <span className="ml-auto inline-flex items-center gap-1.5">
-                  <span className="text-muted-foreground">相似度</span>
-                  <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-brand"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="w-8 text-right tabular-nums text-muted-foreground">
-                    {pct}%
                   </span>
                 </span>
               </div>
@@ -778,24 +812,4 @@ function countChunks(nodes: FileTreeNode[]): number {
     else if (node.children) n += countChunks(node.children);
   }
   return n;
-}
-
-function synthesizeChunks(file: FileTreeNode): SynthChunk[] {
-  const baseName = file.name.replace(/\.[^.]+$/, "");
-  const lines = file.lineCount;
-  const count = Math.max(1, Math.min(file.chunkCount, 3));
-  const per = Math.max(8, Math.floor(lines / Math.max(file.chunkCount, 1)));
-  const out: SynthChunk[] = [];
-  for (let i = 0; i < count; i++) {
-    const startLine = 1 + i * per;
-    const endLine = Math.min(lines, startLine + per - 1);
-    out.push({
-      label: i === 0 ? `${baseName} 主体` : `${baseName} · 块 ${i + 1}`,
-      startLine,
-      endLine,
-      tokens: 120 + i * 180,
-      score: 0.92 - i * 0.07,
-    });
-  }
-  return out;
 }

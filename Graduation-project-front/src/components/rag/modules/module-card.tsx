@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, FileCode2, Github, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavStore } from "@/lib/rag/store";
-import { getRepoById } from "@/lib/rag/mock-data";
+import { useRepos } from "@/lib/api/hooks";
 import type { CodeModule, Language } from "@/lib/rag/types";
 import { COMPLEXITY_META } from "@/components/rag/shared/meta";
 import { LanguageBadge, TypeBadge } from "@/components/rag/shared/badges";
@@ -20,6 +20,8 @@ const LANGUAGE_BORDER: Record<Language, string> = {
   python: "border-emerald-500",
   go: "border-sky-500",
   rust: "border-orange-500",
+  java: "border-rose-500",
+  unknown: "border-slate-400",
 };
 
 /* Complexity progress ring config — keeps every Tailwind color class as a
@@ -111,8 +113,9 @@ interface ModuleCardProps {
 
 export function ModuleCard({ module, showRepo = false }: ModuleCardProps) {
   const openModule = useNavStore((s) => s.openModule);
-  const repo = showRepo ? getRepoById(module.repoId) : undefined;
-  const langBorder = LANGUAGE_BORDER[module.language];
+  const { repos } = useRepos();
+  const repo = showRepo ? repos.find((r) => r.id === module.repoId) : undefined;
+  const langBorder = LANGUAGE_BORDER[module.language] ?? LANGUAGE_BORDER.unknown;
 
   return (
     <motion.button

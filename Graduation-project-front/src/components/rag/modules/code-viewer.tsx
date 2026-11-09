@@ -13,6 +13,8 @@ export interface CodeViewerProps {
   language: Language;
   highlights?: { start: number; end: number; active?: boolean }[];
   onLineClick?: (line: number) => void;
+  /** 代码片段在原文件中的起始行号；用于行号栏与高亮区间对齐。 */
+  startLine?: number;
 }
 
 /* Per-language file-type icon color. We keep FileCode2 as the single icon
@@ -27,6 +29,8 @@ const LANGUAGE_ICON: Record<Language, { icon: typeof FileCode2; tint: string }> 
   python: { icon: FileCode2, tint: "text-emerald-500" },
   go: { icon: FileCode2, tint: "text-sky-500" },
   rust: { icon: FileCode2, tint: "text-orange-500" },
+  java: { icon: FileCode2, tint: "text-rose-500" },
+  unknown: { icon: FileCode2, tint: "text-slate-400" },
 };
 
 /** Format a character count as a compact human string:
@@ -88,10 +92,22 @@ const RUST_KEYWORDS = new Set([
   "extern", "true", "false",
 ]);
 
+const JAVA_KEYWORDS = new Set([
+  "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
+  "class", "const", "continue", "default", "do", "double", "else", "enum",
+  "extends", "final", "finally", "float", "for", "if", "implements", "import",
+  "instanceof", "int", "interface", "long", "native", "new", "package",
+  "private", "protected", "public", "return", "short", "static", "strictfp",
+  "super", "switch", "synchronized", "this", "throw", "throws", "transient",
+  "try", "void", "volatile", "while", "true", "false", "null", "var", "record",
+  "sealed", "permits", "non-sealed", "yield",
+]);
+
 function getKeywords(language: Language): Set<string> {
   if (language === "python") return PY_KEYWORDS;
   if (language === "go") return GO_KEYWORDS;
   if (language === "rust") return RUST_KEYWORDS;
+  if (language === "java") return JAVA_KEYWORDS;
   return TS_KEYWORDS;
 }
 
@@ -249,7 +265,13 @@ function renderHighlighted(code: string, language: Language): ReactNode[][] {
   return lines;
 }
 
-export function CodeViewer({ code, language, highlights, onLineClick }: CodeViewerProps) {
+export function CodeViewer({
+  code,
+  language,
+  highlights,
+  onLineClick,
+  startLine = 1,
+}: CodeViewerProps) {
   const [copied, setCopied] = useState(false);
 
   const lines = useMemo(() => renderHighlighted(code, language), [code, language]);
@@ -324,7 +346,7 @@ export function CodeViewer({ code, language, highlights, onLineClick }: CodeView
       {/* Code body */}
       <div className="max-h-[600px] overflow-auto bg-card font-mono text-[12.5px] leading-[1.65] scrollbar-thin">
         {lines.map((lineNodes, i) => {
-          const lineNum = i + 1;
+          const lineNum = startLine + i;
           const hl = lineHighlightMap.get(lineNum) ?? null;
           const rowBg = hl ? (hl.active ? "bg-brand-soft" : "bg-brand-soft/40") : "";
           const gutterBg = hl

@@ -5,6 +5,8 @@ export type RepoStatus = "synced" | "syncing" | "failed" | "pending";
 export type ModuleType =
   | "function"
   | "class"
+  | "interface"
+  | "enum"
   | "component"
   | "hook"
   | "util"
@@ -12,7 +14,16 @@ export type ModuleType =
   | "config"
   | "page";
 
-export type Language = "typescript" | "tsx" | "javascript" | "jsx" | "python" | "go" | "rust";
+export type Language =
+  | "typescript"
+  | "tsx"
+  | "javascript"
+  | "jsx"
+  | "python"
+  | "go"
+  | "rust"
+  | "java"
+  | "unknown";
 
 export interface Repo {
   id: string;
@@ -27,7 +38,7 @@ export interface Repo {
   totalChunks: number;
   totalFiles: number;
   embeddingModel: string;
-  sliceStrategy: SliceStrategy["id"];
+  sliceStrategy: string;
   progress: number; // 0-100 sync progress
 }
 
@@ -187,6 +198,8 @@ export interface FileTreeNode {
   name: string;
   path: string;
   type: "file" | "dir";
+  /** 文件节点的后端 file_id（目录节点为空）。 */
+  id?: string;
   language?: Language;
   chunkCount: number;
   lineCount: number;

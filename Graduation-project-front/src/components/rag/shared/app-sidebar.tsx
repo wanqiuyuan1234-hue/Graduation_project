@@ -2,7 +2,7 @@
 
 import { Boxes, Database, Github, MessageSquareText, Sparkles } from "lucide-react";
 import { useNavStore } from "@/lib/rag/store";
-import { REPOS } from "@/lib/rag/mock-data";
+import { useRepos } from "@/lib/api/hooks";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "./badges";
 
@@ -17,6 +17,7 @@ export function AppSidebar() {
   const go = useNavStore((s) => s.go);
   const openRepo = useNavStore((s) => s.openRepo);
   const activeRepoId = useNavStore((s) => s.activeRepoId);
+  const { repos } = useRepos();
 
   return (
     <aside role="complementary" aria-label="主侧栏" className="hidden md:flex w-60 shrink-0 flex-col border-r border-border bg-sidebar">
@@ -61,7 +62,7 @@ export function AppSidebar() {
         <div className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           知识库
         </div>
-        {REPOS.map((repo) => {
+        {repos.map((repo) => {
           const active = repo.id === activeRepoId;
           return (
             <button

@@ -23,6 +23,8 @@ export const NAV_ITEMS: NavItem[] = [
 export const MODULE_TYPE_META: Record<ModuleType, { label: string; color: string; dot: string }> = {
   function: { label: "函数", color: "text-emerald-600 bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
   class: { label: "类", color: "text-violet-600 bg-violet-50 border-violet-200", dot: "bg-violet-500" },
+  interface: { label: "接口", color: "text-teal-600 bg-teal-50 border-teal-200", dot: "bg-teal-500" },
+  enum: { label: "枚举", color: "text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200", dot: "bg-fuchsia-500" },
   component: { label: "组件", color: "text-brand-soft-foreground bg-brand-soft border-brand/20", dot: "bg-brand" },
   hook: { label: "Hook", color: "text-amber-600 bg-amber-50 border-amber-200", dot: "bg-amber-500" },
   util: { label: "工具", color: "text-sky-600 bg-sky-50 border-sky-200", dot: "bg-sky-500" },
@@ -39,6 +41,8 @@ export const LANGUAGE_META: Record<Language, { label: string; badge: string; dot
   python: { label: "Python", badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
   go: { label: "Go", badge: "bg-sky-50 text-sky-700 border-sky-200", dot: "bg-sky-500" },
   rust: { label: "Rust", badge: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-500" },
+  java: { label: "Java", badge: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
+  unknown: { label: "未知", badge: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
 };
 
 export const STATUS_META: Record<

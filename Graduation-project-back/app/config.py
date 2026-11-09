@@ -32,7 +32,16 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
     repo_url: str = "https://github.com/google/gson.git"
 
+    # 前端跨域白名单（逗号分隔）。本地前端默认跑在 3000 端口。
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """把逗号分隔的跨域白名单拆成列表。"""
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
 
     @property
     def resolved_db_host(self) -> str:

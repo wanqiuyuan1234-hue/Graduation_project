@@ -23,7 +23,10 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNavStore } from "@/lib/rag/store";
-import { getModuleById, getRepoById } from "@/lib/rag/mock-data";
+import { useModuleDetail, useRepoById } from "@/lib/api/hooks";
+// D3/D4：后端没有引用索引与模块关系表，这两个数组恒为空，下面的 mock 查找分支
+// 仅用于保持既有空态结构，实际不会渲染任何 mock 模块。
+import { getModuleById } from "@/lib/rag/mock-data";
 import type { CallEdge, ReferenceRecord } from "@/lib/rag/types";
 import { COMPLEXITY_META } from "@/components/rag/shared/meta";
 import { LanguageBadge, TypeBadge } from "@/components/rag/shared/badges";
@@ -49,6 +52,9 @@ const REF_KIND_META: Record<ReferenceRecord["kind"], { label: string; color: str
 
 export function ModuleDetailPage() {
   const activeModuleId = useNavStore((s) => s.activeModuleId);
+  const moduleDetail = useModuleDetail(activeModuleId);
+  const moduleData = moduleDetail.data;
+  const repo = useRepoById(moduleData?.repoId ?? null);
   const detailHighlight = useNavStore((s) => s.detailHighlight);
   const activeRepoId = useNavStore((s) => s.activeRepoId);
   const go = useNavStore((s) => s.go);
@@ -64,8 +70,6 @@ export function ModuleDetailPage() {
   // "setState in effect" anti-pattern.
   const [lastHighlight, setLastHighlight] = useState(detailHighlight);
 
-  const moduleData = activeModuleId ? getModuleById(activeModuleId) : undefined;
-
   if (detailHighlight !== lastHighlight) {
     setLastHighlight(detailHighlight);
     if (detailHighlight) {
@@ -80,9 +84,13 @@ export function ModuleDetailPage() {
           <FileCode2 className="size-8 text-muted-foreground" />
         </div>
         <div>
-          <p className="text-base font-medium text-foreground">未选择模块</p>
+          <p className="text-base font-medium text-foreground">
+            {moduleDetail.loading ? "正在加载模块…" : "未选择模块"}
+          </p>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            从模块浏览中选择一个模块查看详情
+            {moduleDetail.loading
+              ? "正在从后端读取模块详情"
+              : moduleDetail.error ?? "从模块浏览中选择一个模块查看详情"}
           </p>
         </div>
         <Button variant="default" onClick={() => go("modules")} className="gap-1.5">
@@ -98,8 +106,10 @@ export function ModuleDetailPage() {
   // navigation (e.g. citation jump from a chat in repo A to a module in
   // repo B, or an all-repos card click). When cross-repo we render a
   // three-level breadcrumb + a "switch to this repo" affordance.
-  const repo = getRepoById(moduleData.repoId);
   const crossRepo = !!repo && repo.id !== activeRepoId;
+  const codeStartLine =
+    moduleData.chunkBoundaries.find((b) => b.chunkId === moduleData.id)?.startLine ??
+    1;
   const highlights = moduleData.chunkBoundaries.map((b) => ({
     start: b.startLine,
     end: b.endLine,
@@ -313,6 +323,7 @@ export function ModuleDetailPage() {
                   code={moduleData.code}
                   language={moduleData.language}
                   highlights={mergedHighlights}
+                  startLine={codeStartLine}
                   onLineClick={(line) => {
                     const boundary = moduleData.chunkBoundaries.find(
                       (b) => line >= b.startLine && line <= b.endLine,

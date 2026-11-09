@@ -5,8 +5,8 @@
 > 分析日期：2026-11-06
 > **版本：v2 —— 「前端对齐后端」修订版**（v1 的思路是"后端补表补字段去满足前端抽象"；v2 反过来：页面结构、交互与主要功能不动，只把细节展示的数据源换成后端真实可得的数据）
 > 核对口径：不再问"有没有同名字段"，而是问"**从 PostgreSQL 表 / Chroma 元数据 / clone_dir 源码，能否直接查、聚合或推导出来**"，逐字段归入 A/B/C/D 四档
-> 数据核对方式：Docker/PostgreSQL 本次未启动，因此直接读取 Chroma 持久化库 `data/chroma/chroma.sqlite3` 的 5936 条真实 metadata（含 signature/name/chunk_type/language/path/行列号）+ 精读 `chunker.py`/`persist.py` 写入路径交叉验证
-> 结论定位：本文只做分析与改造设计，**不涉及任何业务代码改动**
+> 数据核对方式：初稿（2026-11-06）Docker 未启动，读 Chroma 持久化库 `data/chroma/chroma.sqlite3` 的 5936 条 metadata + 精读 `chunker.py`/`persist.py`；**复核（2026-11-07）数据库已启动，直接连 PostgreSQL 逐项 `SELECT` 验证**，结论全部一致，修正记录见 §8.4
+> 结论定位：v2 的设计已全部落地实施，实施清单、接口契约与实际降级表现见 `frontend-backend-integration-result.md`；本文保留为设计与判定依据（v1 分析部分不改，实测修正见 §8.4）
 
 ---
 
@@ -93,19 +93,19 @@
 
 **真实数据核对（v2 新增，直接读 `data/chroma/chroma.sqlite3`）**
 
-| 核对项                     | 实测结果                                                                                                        | 对"前端对齐"的含义                                                    |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| 切片类型分布               | class 647、interface 27、enum 26、method 2955、constructor 338、fixed 1943                                      | "模块"只能取前三种，共 **700** 个；`3993` 是 AST 切片总数，不是模块数 |
-| 切片总数                   | 5936（Chroma 与 `result.md` 一致）                                                                              | 统计卡"总切片数"直接用 `count(chunk)`                                 |
-| `signature` 覆盖           | 3993 条有值（fixed 的 1943 条为 NULL）                                                                          | 只能给 AST 类型/方法切片做摘要；fixed 需按行号兜底                    |
-| `signature` 长度           | 平均 59 字符，最长 405                                                                                          | 卡片 `line-clamp-2` 约容纳 100–120 字符，必须截断                     |
-| `signature` 内容特征       | 2502 条含 `@` 注解、248 条含 `extends/implements`、37 条含 `{`（注解数组初始化）                                | 做 summary 时要先剔除注解行；不能简单按第一个 `{` 截断                |
-| `signature` 是否含 Javadoc | **不含**。class 级切片里 124/647 出现 `/**`，那是**类内部成员的注释**；method 级 3/2955                         | 库内没有"类/方法自己的文档注释"，语义摘要需要另取源码                 |
-| 源码 Javadoc 存量          | 264 个 Java 文件里 229 个含 `/**`，共 950 块                                                                    | 二期可从 `clone_dir` 提取，作为 `metadata.javadoc_summary`            |
-| `chunk.metadata`           | 列存在（ORM 属性 `metadata_json`），但 `persist.save_chunk` **从未赋值** → 5936 条全为 NULL                     | 用户所说的 "mdata" 目前没有数据；不能作为摘要来源                     |
-| Chroma metadata 键         | 仅 9 个：`chunk_id/file_path/chunk_type/name/signature/strategy/start_line/end_line/language`，**无 `repo_id`** | 语言可从 `code_file.language` 取；多仓库时必须补 `repo_id`            |
-| Chroma `document`          | 是 `enriched_text`（形如 `[class: X] ...`），**不是** PG 的原始 `content`                                       | 语义摘要不能拿 Chroma document 直接当代码原文                         |
-| 语言                       | 只有 `java`                                                                                                     | 语言统计返回单值属正常；前端枚举必须补 `java`                         |
+| 核对项                     | 实测结果                                                                                                                                    | 对"前端对齐"的含义                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| 切片类型分布               | class 647、interface 27、enum 26、method 2955、constructor 338、fixed 1943                                                                  | "模块"只能取前三种，共 **700** 个；`3993` 是 AST 切片总数，不是模块数 |
+| 切片总数                   | 5936（Chroma 与 `result.md` 一致）                                                                                                          | 统计卡"总切片数"直接用 `count(chunk)`                                 |
+| `signature` 覆盖           | 3993 条有值（fixed 的 1943 条为 NULL）                                                                                                      | 只能给 AST 类型/方法切片做摘要；fixed 需按行号兜底                    |
+| `signature` 长度           | 平均 59 字符，最长 405                                                                                                                      | 卡片 `line-clamp-2` 约容纳 100–120 字符，必须截断                     |
+| `signature` 内容特征       | 2502 条含 `@` 注解、248 条含 `extends/implements`、37 条含 `{`（注解数组初始化）                                                            | 做 summary 时要先剔除注解行；不能简单按第一个 `{` 截断                |
+| `signature` 是否含 Javadoc | **不含**。class 级切片里 124/647 出现 `/**`，那是**类内部成员的注释**；method 级 3/2955                                                     | 库内没有"类/方法自己的文档注释"，语义摘要需要另取源码                 |
+| 源码 Javadoc 存量          | 264 个 Java 文件里 229 个含 `/**`，共 950 块                                                                                                | 二期可从 `clone_dir` 提取，作为 `metadata.javadoc_summary`            |
+| `chunk.metadata`           | 列存在（ORM 属性 `metadata_json`），但 `persist.save_chunk` **从未赋值**；**已实测 `count(*) filter (where metadata is null)` = 5936/5936** | 用户所说的 "mdata" 目前没有数据；不能作为摘要来源                     |
+| Chroma metadata 键         | 仅 9 个：`chunk_id/file_path/chunk_type/name/signature/strategy/start_line/end_line/language`，**无 `repo_id`**                             | 语言可从 `code_file.language` 取；多仓库时必须补 `repo_id`            |
+| Chroma `document`          | 是 `enriched_text`（形如 `[class: X] ...`），**不是** PG 的原始 `content`                                                                   | 语义摘要不能拿 Chroma document 直接当代码原文                         |
+| 语言                       | 只有 `java`                                                                                                                                 | 语言统计返回单值属正常；前端枚举必须补 `java`                         |
 
 ### 1.2 前端（Next.js 16 / React 19 / Zustand / 全静态数据）
 
@@ -1435,11 +1435,18 @@ print(c.execute(
 # 实测输出：(3993,) —— AST 切片全部有 signature，fixed 的 1943 条为 NULL
 ```
 
-### 8.4 本次未验证项（诚实声明）
+### 8.4 实测修正（2026-11-07 数据库启动后逐项复核）
 
-| 项                                        | 状态     | 说明                                                                                          |
-| ----------------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
-| PG 表的实际行数                           | 未直连   | Docker 未启动；本文行数取自 `result.md` 建库记录 + 磁盘/Chroma 核对，未执行 `SELECT count(*)` |
-| `chunk.metadata` 全 NULL                  | 代码推定 | 依据 `persist.save_chunk` 从未赋值推出；未在 PG 中实测（Chroma 中无该键，反向印证）           |
-| 源码 Javadoc 数量（229/264 文件、950 块） | 本地统计 | 基于 `data/repos/gson` 文件扫描；未做 AST 级别与 `start_line` 的对齐验证                      |
-| `/api/modules` 递归 CTE 性能              | 未实测   | 700 模块 / 3993 节点的规模下理论为毫秒级，实际需在 PG 上 `EXPLAIN ANALYZE` 确认               |
+| 项                                                  | 初稿状态                        | 实测结果                                                                                    | 结论                           |
+| --------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------ |
+| PG 表实际行数                                       | 未直连，取自 result.md + Chroma | `repo=1`、`code_file=264`、`chunk=5936`                                                     | 一致，无需修正                 |
+| 切片类型分布                                        | Chroma 直读                     | class 647 / interface 27 / enum 26 / method 2955 / constructor 338 / fixed 1943             | 一致                           |
+| 模块数                                              | 推算 700                        | SQL `strategy='ast' and chunk_type in ('class','interface','enum')` = **700**               | 一致                           |
+| `signature` 有值                                    | Chroma 直读 3993                | PG `count(*) filter (where signature<>'')` = **3993**                                       | 一致                           |
+| `chunk.metadata` 全 NULL                            | 代码推定                        | PG `count(*) filter (where metadata is null)` = **5936/5936**                               | 推定为真                       |
+| `token_count` / `content_hash` / `code_file.sha256` | 代码推定未写入                  | 分别 5936 / 5936 / 264 全 NULL                                                              | 推定为真                       |
+| 语言                                                | 只有 java                       | `select language,count(*)` = java/264                                                       | 一致                           |
+| `parent_chunk_id`                                   | 未核对条数                      | 3741 条非空                                                                                 | 为子树计数提供依据             |
+| `branch`                                            | 设计读 `.git/HEAD`              | `refs/heads/main` → `main`                                                                  | 方案可行                       |
+| 源码 Javadoc 数量（229/264 文件、950 块）           | 本地扫描                        | 未做 AST 级与 `start_line` 对齐验证                                                         | 二期实现前需补验证             |
+| `/api/modules` 聚合性能                             | 未实测                          | 实测选型：一次性取该仓库 AST 节点（id, parent），Python 迭代 DFS 求子树大小；接口响应毫秒级 | 未使用递归 CTE，见联调结果文档 |

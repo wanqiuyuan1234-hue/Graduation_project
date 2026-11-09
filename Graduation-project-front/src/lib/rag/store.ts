@@ -152,6 +152,8 @@ interface NavState {
   go: (view: ViewId) => void;
   openModule: (moduleId: string, highlight?: { startLine: number; endLine: number } | null) => void;
   openRepo: (repoId: string, view?: ViewId) => void;
+  /** 只切换当前仓库，不改变当前视图（供后端仓库列表校正旧的 mock id）。 */
+  setActiveRepoId: (repoId: string) => void;
   openChatWithSession: (sessionId: string) => void;
   setCitation: (index: number | null) => void;
   setSourcePanelOpen: (open: boolean) => void;
@@ -194,7 +196,8 @@ export const useNavStore = create<NavState>()(
       view: "modules",
       activeModuleId: null,
       detailHighlight: null,
-      activeRepoId: "repo-fastgpt-sdk",
+      activeRepoId: "",
+      // 初始为空；仓库列表由后端返回后，由 useRepos 校正为第一个真实仓库 id。
       // Initial seed from CHAT_SESSIONS mock. On first load (no persisted
       // state yet) this is what the user sees; once persisted state exists it
       // hydrates over these defaults, replacing the mock list with the user's
@@ -215,6 +218,7 @@ export const useNavStore = create<NavState>()(
           sourcePanelOpen: false,
         }),
       openRepo: (repoId, view = "knowledge") => set({ activeRepoId: repoId, view }),
+      setActiveRepoId: (repoId) => set({ activeRepoId: repoId }),
       openChatWithSession: (sessionId) => set({ view: "chat", activeSessionId: sessionId }),
       setCitation: (index) => set({ activeCitationIndex: index, sourcePanelOpen: index !== null }),
       setSourcePanelOpen: (open) => set({ sourcePanelOpen: open }),

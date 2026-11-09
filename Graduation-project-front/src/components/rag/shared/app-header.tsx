@@ -2,7 +2,7 @@
 
 import { Database, Menu, Boxes, MessageSquareText, Github, Moon, Sparkles, Sun, Settings } from "lucide-react";
 import { useNavStore } from "@/lib/rag/store";
-import { REPOS } from "@/lib/rag/mock-data";
+import { useRepos } from "@/lib/api/hooks";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -30,7 +30,8 @@ export function AppHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const activeRepo = REPOS.find((r) => r.id === activeRepoId);
+  const { repos } = useRepos();
+  const activeRepo = repos.find((r) => r.id === activeRepoId);
 
   // Apply theme to <html> + persist to localStorage. The store initializes
   // synchronously from localStorage (see store.ts getInitialTheme), and the
@@ -156,7 +157,7 @@ export function AppHeader() {
             );
           })}
           <div className="mt-2 border-t border-border pt-2">
-            {REPOS.map((repo) => (
+            {repos.map((repo) => (
               <button
                 key={repo.id}
                 onClick={() => {
