@@ -35,9 +35,7 @@ def clear_repo(db: Session, repo_id: int, collection) -> None:
     db.execute(delete(CodeFile).where(CodeFile.repo_id == repo_id))
     db.flush()
 
-	"""
-		这里的collection.get（）最多返回100条，后期多仓库需要完善功能
-	"""
+    # 这里的 collection.get() 最多返回 100 条，后期多仓库需要完善功能
     if collection.count() > 0:
         collection.delete(ids=collection.get()["ids"])
 
