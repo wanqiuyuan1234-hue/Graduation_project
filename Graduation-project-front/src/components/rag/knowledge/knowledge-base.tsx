@@ -22,7 +22,14 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SLICE_STRATEGIES } from "@/lib/rag/mock-data";
-import { useFileChunks, useFileTree, useRepos } from "@/lib/api/hooks";
+import {
+  cancelJob,
+  submitRepo,
+  useFileChunks,
+  useFileTree,
+  useRepos,
+  useReposPolling,
+} from "@/lib/api/hooks";
 import type {
   FileTreeNode,
   Repo,
@@ -77,11 +84,25 @@ const STRATEGY_LABELS: Record<string, string> = {
 
 const EMBEDDING_MODELS = ["bge-m3", "text-embedding-3-small", "bge-large-zh"];
 
+// 后端入库阶段 → 卡片展示文案
+const PHASE_LABELS: Record<string, string> = {
+  queued: "排队中",
+  cloning: "正在克隆",
+  parsing: "正在解析",
+  persisting: "正在写库",
+  embedding: "正在向量化",
+  done: "已完成",
+  canceled: "已取消",
+};
+
 export function KnowledgeBasePage() {
   const activeRepoId = useNavStore((s) => s.activeRepoId);
   const openRepo = useNavStore((s) => s.openRepo);
 
   const { repos, loading: reposLoading, error: reposError } = useRepos();
+
+  // 有仓库在同步时每 3 秒刷新一次列表，进度条与阶段随之更新
+  useReposPolling(repos.some((repo) => repo.status === "syncing"));
 
   const stats = useMemo(() => {
     const repoCount = repos.length;
@@ -216,6 +237,39 @@ function RepoCard({
   onViewTree: () => void;
 }) {
   const strategyLabel = STRATEGY_LABELS[repo.sliceStrategy];
+  const [busy, setBusy] = useState(false);
+
+  async function handleResync() {
+    if (!repo.url) {
+      toast.error("该仓库缺少 URL，无法重新同步");
+      return;
+    }
+    setBusy(true);
+    try {
+      await submitRepo(repo.url);
+      toast.success(`已提交重新同步：${repo.name}`, {
+        description: "全量重建会重新克隆并覆盖该仓库的索引",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (!repo.jobId) return;
+    setBusy(true);
+    try {
+      await cancelJob(repo.jobId);
+      toast.info(`已请求取消 ${repo.name} 的入库任务`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -253,10 +307,44 @@ function RepoCard({
           {repo.status === "syncing" ? (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>同步进度</span>
+                <span>{PHASE_LABELS[repo.syncPhase ?? "queued"] ?? repo.syncPhase ?? "同步中"}</span>
                 <span className="tabular-nums">{repo.progress}%</span>
               </div>
               <Progress value={repo.progress} className="h-1.5" />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {(repo.totalFilesInJob ?? 0) > 0
+                    ? `解析 ${repo.processedFiles ?? 0}/${repo.totalFilesInJob} 文件`
+                    : "准备中…"}
+                  {repo.syncPhase === "embedding" &&
+                    ` · 向量化 ${repo.processedChunks ?? 0}/${repo.totalChunksInJob ?? 0} 切片`}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5 text-[11px]"
+                  onClick={handleCancel}
+                  disabled={busy || !repo.jobId}
+                >
+                  取消
+                </Button>
+              </div>
+            </div>
+          ) : repo.status === "failed" ? (
+            <div className="space-y-1.5">
+              <span className="block text-[12px] text-destructive">
+                同步失败：{repo.syncError ?? "未知错误"}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[12px]"
+                onClick={handleResync}
+                disabled={busy}
+              >
+                <RefreshCw className="size-3.5" />
+                重试
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
@@ -289,7 +377,8 @@ function RepoCard({
               size="sm"
               variant="ghost"
               className="text-[12px]"
-              onClick={() => toast.info(`已开始重新同步 ${repo.name}`)}
+              onClick={handleResync}
+              disabled={busy || repo.status === "syncing"}
             >
               <RefreshCw className="size-3.5" />
               重新同步
@@ -350,6 +439,8 @@ function PullRepoDialog() {
   const [strategyOptions, setStrategyOptions] = useState<
     Record<string, number | string>
   >({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function reset() {
     setUrl("");
@@ -357,14 +448,28 @@ function PullRepoDialog() {
     setStrategy("ast-semantic");
     setEmbedding("bge-m3");
     setStrategyOptions({});
+    setSubmitError(null);
   }
 
-  function handleSubmit() {
-    setOpen(false);
-    toast.success("仓库拉取已开始", {
-      description: url ? `正在拉取 ${url}` : "请稍候…",
-    });
-    reset();
+  async function handleSubmit() {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const result = await submitRepo(trimmed);
+      toast.success("仓库入库任务已提交", {
+        description: `${result.message}（job ${result.job_id}）· 可在仓库卡片查看进度`,
+      });
+      setOpen(false);
+      reset();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -483,15 +588,24 @@ function PullRepoDialog() {
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+          {submitError ? (
+            <p className="mr-auto max-w-[60%] text-[12px] text-destructive">
+              {submitError}
+            </p>
+          ) : null}
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            disabled={submitting}
+          >
             取消
           </Button>
           <Button
             className="bg-brand text-brand-foreground hover:bg-brand/90"
-            onClick={handleSubmit}
-            disabled={!url.trim()}
+            onClick={() => void handleSubmit()}
+            disabled={!url.trim() || submitting}
           >
-            开始拉取
+            {submitting ? "提交中…" : "开始拉取"}
           </Button>
         </DialogFooter>
       </DialogContent>

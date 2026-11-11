@@ -10,22 +10,25 @@ from app.services.indexing.chunker import ChunkData
 
 
 def get_or_create_repo(db: Session, name: str, url: str, clone_dir: str) -> Repo:
-    """获取或创建仓库记录（单仓库场景）。"""
-    repo = db.execute(select(Repo).where(Repo.name == name)).scalar_one_or_none()
+    """按 URL 获取或创建仓库记录（多仓库按 url 唯一）。
+
+    命中时复用原 repo 行（保留 id / created_at），只更新名称与克隆目录。
+    """
+    repo = db.execute(select(Repo).where(Repo.url == url)).scalar_one_or_none()
     if repo is None:
         repo = Repo(name=name, url=url, clone_dir=clone_dir)
         db.add(repo)
     else:
-        repo.url = url
+        repo.name = name
         repo.clone_dir = clone_dir
     db.flush()
     return repo
 
 
 def clear_repo(db: Session, repo_id: int, collection) -> None:
-    """幂等重建：清空该仓库的 PG 文件/切片，并清空 Chroma 集合。
+    """幂等重建：清空该仓库的 PG 文件/切片与该仓库的向量。
 
-    一期为单仓库场景，Chroma 直接清空全部文档；将来多仓库可按 metadata 过滤。
+    向量按 metadata.repo_id 过滤删除，不会影响其他仓库。
     """
     file_ids = list(
         db.execute(select(CodeFile.id).where(CodeFile.repo_id == repo_id)).scalars()
@@ -35,9 +38,7 @@ def clear_repo(db: Session, repo_id: int, collection) -> None:
     db.execute(delete(CodeFile).where(CodeFile.repo_id == repo_id))
     db.flush()
 
-    # 这里的 collection.get() 最多返回 100 条，后期多仓库需要完善功能
-    if collection.count() > 0:
-        collection.delete(ids=collection.get()["ids"])
+    collection.delete(where={"repo_id": repo_id})
 
 
 def save_code_file(

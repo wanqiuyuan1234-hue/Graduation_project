@@ -39,6 +39,40 @@ export interface ApiRepo {
   strategies: string[];
   languages: ApiLanguageStat[];
   embedding_model: string | null;
+  job_id: number | null;
+  phase: string | null;
+  progress: number;
+  error: string | null;
+  processed_files: number;
+  processed_chunks: number;
+}
+
+/** 入库任务（GET /api/jobs/{id}） */
+export interface ApiJob {
+  id: number;
+  repo_id: number | null;
+  repo_url: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "canceled";
+  phase: string;
+  progress: number;
+  total_files: number;
+  processed_files: number;
+  total_chunks: number;
+  processed_chunks: number;
+  message: string | null;
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+/** 提交入库任务（POST /api/repos） */
+export interface ApiRepoCreateResult {
+  job_id: number;
+  repo_id: number | null;
+  status: string;
+  phase: string;
+  message: string;
 }
 
 export interface ApiModule {
@@ -172,6 +206,12 @@ export function toRepo(api: ApiRepo): Repo {
   const strategy = api.strategies.includes("ast")
     ? "ast"
     : (api.strategies[0] ?? "unknown");
+  const status: RepoStatus =
+    api.status === "syncing" || api.status === "failed"
+      ? (api.status as RepoStatus)
+      : api.status === "synced"
+        ? "synced"
+        : "pending";
 
   return {
     id: String(api.id),
@@ -181,15 +221,21 @@ export function toRepo(api: ApiRepo): Repo {
     // D6：后端无仓库描述，返回空串，卡片按条件隐藏
     description: "",
     defaultLanguage: toLanguage(primaryLanguage),
-    status: (api.status === "synced" ? "synced" : "pending") as RepoStatus,
+    status,
     lastSyncAt: formatDateTime(api.indexed_at),
     totalModules: api.total_modules,
     totalChunks: api.total_chunks,
     totalFiles: api.total_files,
     embeddingModel: api.embedding_model ?? "—",
     sliceStrategy: strategy,
-    // D7：无任务表，只有已完成/待处理两态
-    progress: api.status === "synced" ? 100 : 0,
+    progress: status === "synced" ? 100 : api.progress,
+    syncPhase: api.phase ?? undefined,
+    syncError: api.error ?? undefined,
+    jobId: api.job_id != null ? String(api.job_id) : undefined,
+    processedFiles: api.processed_files,
+    processedChunks: api.processed_chunks,
+    totalFilesInJob: api.total_files,
+    totalChunksInJob: api.total_chunks,
   };
 }
 

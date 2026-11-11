@@ -11,7 +11,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CodeModule, FileTreeNode, Repo } from "@/lib/rag/types";
 import { useNavStore } from "@/lib/rag/store";
-import { apiGet } from "./client";
+import { apiGet, apiPost } from "./client";
 import {
   toCodeModule,
   toCodeModuleDetail,
@@ -22,6 +22,7 @@ import {
   type ApiModuleDetail,
   type ApiModulePage,
   type ApiRepo,
+  type ApiRepoCreateResult,
 } from "./adapters";
 
 /* ------------------------------ 仓库共享缓存 ------------------------------ */
@@ -59,7 +60,11 @@ function getReposSnapshot(): ReposState {
 /** 拉取仓库列表；已有缓存时不重复请求。force=true 可强制刷新。 */
 export function loadRepos(force = false): Promise<void> {
   if (!force && reposState.repos.length > 0) return Promise.resolve();
-  if (reposPromise) return reposPromise;
+  if (reposPromise) {
+    // 强刷不能复用可能在"提交任务之前"发出的在途请求，否则会拿到旧状态。
+    // 等它结束后再发起一次真正的新请求。
+    return force ? reposPromise.then(() => loadRepos(true)) : reposPromise;
+  }
 
   setReposState({ loading: true, error: null });
   reposPromise = apiGet<ApiRepo[]>("/api/repos")
@@ -97,6 +102,30 @@ export function useRepos(): ReposState {
 export function useRepoById(repoId: string | null | undefined): Repo | undefined {
   const { repos } = useRepos();
   return repoId ? repos.find((repo) => repo.id === repoId) : undefined;
+}
+
+/** 提交入库任务；成功后立即刷新仓库列表，让卡片进入 syncing 状态。 */
+export async function submitRepo(url: string): Promise<ApiRepoCreateResult> {
+  const result = await apiPost<ApiRepoCreateResult>("/api/repos", { url });
+  await loadRepos(true);
+  return result;
+}
+
+/** 请求取消任务；排队中的会立即取消，运行中的在下一个检查点生效。 */
+export async function cancelJob(jobId: string): Promise<void> {
+  await apiPost(`/api/jobs/${jobId}/cancel`);
+  await loadRepos(true);
+}
+
+/** 有任务进行中时按固定间隔轮询仓库列表（不用 SSE/WebSocket）。 */
+export function useReposPolling(enabled: boolean, intervalMs = 3000): void {
+  useEffect(() => {
+    if (!enabled) return;
+    const timer = window.setInterval(() => {
+      void loadRepos(true);
+    }, intervalMs);
+    return () => window.clearInterval(timer);
+  }, [enabled, intervalMs]);
 }
 
 /* -------------------------------- 模块列表 -------------------------------- */
@@ -142,6 +171,62 @@ export function useModules(repoId: string | null): AsyncState<CodeModule[]> {
       cancelled = true;
     };
   }, [repoId]);
+
+  return state;
+}
+
+/* ------------------------------ 命令面板搜索 ------------------------------ */
+
+/**
+ * 命令面板用的模块搜索：走后端 keyword（匹配模块名 / 文件路径 / 签名），
+ * 限定在当前仓库；输入变化后 200ms 防抖，避免每敲一个字都打后端。
+ */
+export function useModuleSearch(
+  repoId: string | null,
+  keyword: string,
+  limit = 8,
+): AsyncState<CodeModule[]> {
+  const [state, setState] = useState<AsyncState<CodeModule[]>>({
+    data: EMPTY_MODULES,
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const query = keyword.trim();
+    const timer = window.setTimeout(
+      () => {
+        apiGet<ApiModulePage>("/api/modules", {
+          repo_id: repoId ? Number(repoId) : undefined,
+          keyword: query || undefined,
+          size: limit,
+        })
+          .then((page) => {
+            if (cancelled) return;
+            setState({
+              data: page.items.map(toCodeModule),
+              loading: false,
+              error: null,
+            });
+          })
+          .catch((error: unknown) => {
+            if (cancelled) return;
+            setState({
+              data: EMPTY_MODULES,
+              loading: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+      },
+      query ? 200 : 0,
+    );
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [repoId, keyword, limit]);
 
   return state;
 }

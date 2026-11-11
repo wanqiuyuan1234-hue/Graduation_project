@@ -26,7 +26,7 @@ class Repo(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-    url = Column(String(1024))
+    url = Column(String(1024), nullable=False, unique=True)
     clone_dir = Column(String(1024))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     indexed_at = Column(DateTime(timezone=True), nullable=True)
@@ -72,4 +72,36 @@ class Chunk(Base):
         Index("idx_chunk_file", "file_id"),
         Index("idx_chunk_strategy", "strategy"),
         Index("idx_chunk_parent", "parent_chunk_id"),
+    )
+
+
+class RepoJob(Base):
+    """仓库入库任务：记录阶段、进度、错误与取消标记。
+
+    状态机：queued → running → succeeded / failed / canceled
+    阶段：queued → cloning → parsing → persisting → embedding → done
+    """
+
+    __tablename__ = "repo_job"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    repo_id = Column(BigInteger, ForeignKey("repo.id", ondelete="CASCADE"), nullable=True)
+    repo_url = Column(String(1024), nullable=False)
+    status = Column(String(20), nullable=False, server_default=text("'queued'"))
+    phase = Column(String(20), nullable=False, server_default=text("'queued'"))
+    progress = Column(Integer, nullable=False, server_default=text("0"))
+    total_files = Column(Integer, nullable=False, server_default=text("0"))
+    processed_files = Column(Integer, nullable=False, server_default=text("0"))
+    total_chunks = Column(Integer, nullable=False, server_default=text("0"))
+    processed_chunks = Column(Integer, nullable=False, server_default=text("0"))
+    message = Column(String(500))
+    error = Column(Text)
+    cancel_requested = Column(Boolean, nullable=False, server_default=text("false"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_repo_job_repo", "repo_id"),
+        Index("idx_repo_job_status", "status"),
     )

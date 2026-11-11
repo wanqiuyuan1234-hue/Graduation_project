@@ -45,6 +45,14 @@ class RepoOut(BaseModel):
     languages: list[LanguageStatOut] = []
     embedding_model: str | None = None
 
+    # 最近一次入库任务（无任务时为空）；status 取值为 pending/syncing/synced/failed
+    job_id: int | None = None
+    phase: str | None = None
+    progress: int = 0
+    error: str | None = None
+    processed_files: int = 0
+    processed_chunks: int = 0
+
 
 class FileOut(BaseModel):
     """源文件。"""

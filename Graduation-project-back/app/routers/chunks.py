@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import Chunk, CodeFile, Repo
+from app.models import Chunk, CodeFile, Repo, RepoJob
 from app.schemas.chunk import (
     ChunkDetailOut,
     ChunkOut,
@@ -127,8 +127,27 @@ def _build_repo_outs(db: Session, repos: list[Repo]) -> list[RepoOut]:
             )
         )
 
+    # 每个仓库最近一次入库任务（用于 syncing 状态与进度展示）
+    latest_jobs: dict[int, RepoJob] = {}
+    repo_ids = [repo.id for repo in repos]
+    if repo_ids:
+        for job in db.execute(
+            select(RepoJob)
+            .where(RepoJob.repo_id.in_(repo_ids))
+            .order_by(RepoJob.id.desc())
+        ).scalars():
+            if job.repo_id is not None:
+                latest_jobs.setdefault(job.repo_id, job)
+
     out: list[RepoOut] = []
     for repo in repos:
+        job = latest_jobs.get(repo.id)
+        if job is not None and job.status in ("queued", "running"):
+            status = "syncing"
+        elif job is not None and job.status == "failed":
+            status = "failed"
+        else:
+            status = "synced" if repo.indexed_at else "pending"
         out.append(
             RepoOut(
                 id=repo.id,
@@ -137,7 +156,7 @@ def _build_repo_outs(db: Session, repos: list[Repo]) -> list[RepoOut]:
                 clone_dir=repo.clone_dir,
                 created_at=repo.created_at,
                 indexed_at=repo.indexed_at,
-                status="synced" if repo.indexed_at else "pending",
+                status=status,
                 branch=read_git_branch(repo.clone_dir),
                 total_files=file_counts.get(repo.id, 0),
                 total_chunks=chunk_counts.get(repo.id, 0),
@@ -148,6 +167,12 @@ def _build_repo_outs(db: Session, repos: list[Repo]) -> list[RepoOut]:
                     key=lambda s: (-s.module_count, -s.file_count, s.language),
                 ),
                 embedding_model=settings.embedding_model,
+                job_id=job.id if job is not None else None,
+                phase=job.phase if job is not None else None,
+                progress=job.progress if job is not None else 0,
+                error=job.error if job is not None else None,
+                processed_files=job.processed_files if job is not None else 0,
+                processed_chunks=job.processed_chunks if job is not None else 0,
             )
         )
     return out

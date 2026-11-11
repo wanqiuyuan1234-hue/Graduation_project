@@ -31,9 +31,27 @@ class Settings(BaseSettings):
     chroma_dir: str = "./data/chroma"
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
     repo_url: str = "https://github.com/google/gson.git"
+    # 本地缓存完整时优先离线加载，彻底跳过 huggingface.co 的联网校验；
+    # 缓存缺失且为 True 时直接报错，而不是在受限网络下反复重试。
+    embedding_local_only: bool = True
+    # 模型加载（含可能的下载）上限：超时立刻让任务失败，避免长时间无进度
+    embedding_load_timeout_seconds: int = 120
 
     # 前端跨域白名单（逗号分隔）。本地前端默认跑在 3000 端口。
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    # ---- 入库任务（2G2核 约束）----
+    # 进程内单并发：同一时刻只跑 1 个任务，等待队列最多 2 个
+    job_queue_limit: int = 2
+    # 单仓库资源上限
+    max_repo_size_mb: int = 150
+    max_repo_files: int = 3000
+    max_repo_chunks: int = 20000
+    # 超时（秒）：克隆 300s，单任务总计 30min
+    clone_timeout_seconds: int = 300
+    job_timeout_seconds: int = 1800
+    # embedding 批大小，控制单次内存占用
+    embed_batch_size: int = 16
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

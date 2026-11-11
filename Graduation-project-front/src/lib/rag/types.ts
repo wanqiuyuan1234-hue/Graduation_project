@@ -40,6 +40,16 @@ export interface Repo {
   embeddingModel: string;
   sliceStrategy: string;
   progress: number; // 0-100 sync progress
+  /** 最近一次入库任务的阶段：queued/cloning/parsing/persisting/embedding/done */
+  syncPhase?: string;
+  /** 最近一次入库任务的错误信息（失败时用于卡片提示） */
+  syncError?: string;
+  /** 最近一次入库任务 id，用于取消/重试 */
+  jobId?: string;
+  processedFiles?: number;
+  processedChunks?: number;
+  totalFilesInJob?: number;
+  totalChunksInJob?: number;
 }
 
 export type SliceStrategyId =

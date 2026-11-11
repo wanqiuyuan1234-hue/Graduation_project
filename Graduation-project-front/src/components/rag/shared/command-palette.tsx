@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Boxes,
   Database,
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavStore } from "@/lib/rag/store";
-import { MODULES, REPOS } from "@/lib/rag/mock-data";
+import { useModuleSearch, useRepos } from "@/lib/api/hooks";
 import { SHORTCUTS_TOGGLE_EVENT } from "@/hooks/use-keyboard-shortcuts";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,9 +78,20 @@ export function CommandPalette({
   const go = useNavStore((s) => s.go);
   const openModule = useNavStore((s) => s.openModule);
   const openRepo = useNavStore((s) => s.openRepo);
+  const activeRepoId = useNavStore((s) => s.activeRepoId);
   const sessions = useNavStore((s) => s.sessions);
   const setActiveSession = useNavStore((s) => s.setActiveSession);
   const toggleTheme = useNavStore((s) => s.toggleTheme);
+
+  const { repos } = useRepos();
+  const [search, setSearch] = useState("");
+
+  // 打开面板时先展示当前仓库的前 N 个模块；输入关键词后走后端搜索
+  const moduleSearch = useModuleSearch(
+    activeRepoId || null,
+    search,
+    MAX_MODULE_RESULTS,
+  );
 
   // Cmd+K / Ctrl+K → open the palette. preventDefault stops the browser's
   // default "focus search bar" / "Cmd+K bookmark" handling so our palette
@@ -169,11 +180,8 @@ export function CommandPalette({
     });
   }, [closeAndRun]);
 
-  // Limit module results to MAX_MODULE_RESULTS. cmdk filters further based
-  // on the live search input, so capping the initial list keeps the palette
-  // scannable without hiding matches — typing narrows the 8 down to the
-  // few that actually matter.
-  const moduleResults = MODULES.slice(0, MAX_MODULE_RESULTS);
+  // 后端已按关键词过滤并限量，这里直接渲染
+  const moduleResults = moduleSearch.data;
 
   return (
     <CommandDialog
@@ -183,7 +191,10 @@ export function CommandPalette({
       description="搜索模块、仓库、会话或操作"
       className="sm:max-w-xl"
     >
-      <CommandInput placeholder="搜索模块、仓库、会话或操作…" />
+      <CommandInput
+        placeholder="搜索模块、仓库、会话或操作…"
+        onValueChange={setSearch}
+      />
       <CommandList className="max-h-[60vh]">
         <CommandEmpty>未找到匹配项。</CommandEmpty>
 
@@ -233,35 +244,49 @@ export function CommandPalette({
               </CommandItem>
             );
           })}
-          {MODULES.length > MAX_MODULE_RESULTS && (
+          {moduleSearch.loading ? (
             <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
-              仅显示前 {MAX_MODULE_RESULTS} 个模块，输入关键词以缩小范围…
+              正在搜索模块…
             </p>
-          )}
+          ) : moduleSearch.error ? (
+            <p className="px-2 py-1.5 text-[11px] text-destructive">
+              模块搜索失败：{moduleSearch.error}
+            </p>
+          ) : moduleResults.length === 0 ? (
+            <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
+              当前仓库未匹配到模块
+            </p>
+          ) : null}
         </CommandGroup>
 
         <CommandSeparator />
 
         {/* 仓库 */}
         <CommandGroup heading="仓库">
-          {REPOS.map((repo) => (
-            <CommandItem
-              key={repo.id}
-              value={`${repo.name} 仓库 repo ${repo.description}`}
-              onSelect={() => handleOpenRepo(repo.id, repo.name)}
-            >
-              <Github className="size-4 text-muted-foreground" />
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm font-medium text-foreground">
-                  {repo.name}
-                </span>
-                <span className="truncate text-[11px] text-muted-foreground">
-                  {repo.description}
-                </span>
-              </div>
-              <CommandShortcut>⏎</CommandShortcut>
-            </CommandItem>
-          ))}
+          {repos.length === 0 ? (
+            <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+              暂无仓库。在知识库中拉取一个仓库即可。
+            </p>
+          ) : (
+            repos.map((repo) => (
+              <CommandItem
+                key={repo.id}
+                value={`${repo.name} 仓库 repo ${repo.url}`}
+                onSelect={() => handleOpenRepo(repo.id, repo.name)}
+              >
+                <Github className="size-4 text-muted-foreground" />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {repo.name}
+                  </span>
+                  <span className="truncate text-[11px] text-muted-foreground">
+                    {repo.url || `${repo.totalFiles} 文件 · ${repo.totalModules} 模块`}
+                  </span>
+                </div>
+                <CommandShortcut>⏎</CommandShortcut>
+              </CommandItem>
+            ))
+          )}
         </CommandGroup>
 
         <CommandSeparator />
